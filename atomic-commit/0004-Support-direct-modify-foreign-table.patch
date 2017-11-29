@@ -1,0 +1,37 @@
+From 42e51a55aff2f4ee0b2e075e839397a950618ea3 Mon Sep 17 00:00:00 2001
+From: Masahiko Sawada <sawada.mshk@gmail.com>
+Date: Wed, 29 Nov 2017 10:17:10 +0900
+Subject: [PATCH 4/5] Support direct modify foreign table.
+
+---
+ contrib/postgres_fdw/postgres_fdw.c |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
+
+diff --git a/contrib/postgres_fdw/postgres_fdw.c b/contrib/postgres_fdw/postgres_fdw.c
+index 9687e1f..7700e22 100644
+--- a/contrib/postgres_fdw/postgres_fdw.c
++++ b/contrib/postgres_fdw/postgres_fdw.c
+@@ -2318,6 +2318,7 @@ postgresBeginDirectModify(ForeignScanState *node, int eflags)
+ 	ForeignScan *fsplan = (ForeignScan *) node->ss.ps.plan;
+ 	EState	   *estate = node->ss.ps.state;
+ 	PgFdwDirectModifyState *dmstate;
++	ForeignServer *server;
+ 	RangeTblEntry *rte;
+ 	Oid			userid;
+ 	ForeignTable *table;
+@@ -2347,6 +2348,12 @@ postgresBeginDirectModify(ForeignScanState *node, int eflags)
+ 	dmstate->rel = node->ss.ss_currentRelation;
+ 	table = GetForeignTable(RelationGetRelid(dmstate->rel));
+ 	user = GetUserMapping(userid, table->serverid);
++	server = GetForeignServer(user->serverid);
++
++	/* Remember this foreign server has been modified */
++	FdwXactRegisterForeignServer(user->serverid, user->userid,
++								 server_uses_two_phase_commit(server),
++								 true);
+ 
+ 	/*
+ 	 * Get connection to the foreign server.  Connection manager will
+-- 
+1.7.1
+

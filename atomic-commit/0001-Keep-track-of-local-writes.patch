@@ -1,0 +1,137 @@
+
+From 5c48378890d89b5286e1e23b5c68663dc610f3da Mon Sep 17 00:00:00 2001
+From: Masahiko Sawada <sawada.mshk@gmail.com>
+Date: Wed, 22 Nov 2017 15:28:18 +0900
+Subject: [PATCH 1/5] Keep track of local writes
+
+---
+ src/backend/access/heap/heapam.c  |   10 ++++++++++
+ src/backend/access/transam/xact.c |   27 +++++++++++++++++++++++++++
+ src/include/access/xact.h         |    3 +++
+ 3 files changed, 40 insertions(+), 0 deletions(-)
+
+diff --git a/src/backend/access/heap/heapam.c b/src/backend/access/heap/heapam.c
+index 3acef27..a854e41 100644
+--- a/src/backend/access/heap/heapam.c
++++ b/src/backend/access/heap/heapam.c
+@@ -2453,6 +2453,9 @@ heap_insert(Relation relation, HeapTuple tup, CommandId cid,
+ 	 */
+ 	CheckForSerializableConflictIn(relation, NULL, InvalidBuffer);
+ 
++	/* Remember to write on local node for foreign transaction */
++	RegisterTransactionLocalNode();
++
+ 	/* NO EREPORT(ERROR) from here till changes are logged */
+ 	START_CRIT_SECTION();
+ 
+@@ -3262,6 +3265,9 @@ l1:
+ 	 */
+ 	MultiXactIdSetOldestMember();
+ 
++	/* Remember to write on local node for foreign transaction */
++	RegisterTransactionLocalNode();
++
+ 	compute_new_xmax_infomask(HeapTupleHeaderGetRawXmax(tp.t_data),
+ 							  tp.t_data->t_infomask, tp.t_data->t_infomask2,
+ 							  xid, LockTupleExclusive, true,
+@@ -4167,6 +4173,10 @@ l2:
+ 	 */
+ 	CheckForSerializableConflictIn(relation, &oldtup, buffer);
+ 
++
++	/* Remember to write on local node for foreign transaction */
++	RegisterTransactionLocalNode();
++
+ 	/*
+ 	 * At this point newbuf and buffer are both pinned and locked, and newbuf
+ 	 * has enough space for the new tuple.  If they are the same buffer, only
+diff --git a/src/backend/access/transam/xact.c b/src/backend/access/transam/xact.c
+index c06fabc..a7451c3 100644
+--- a/src/backend/access/transam/xact.c
++++ b/src/backend/access/transam/xact.c
+@@ -117,6 +117,9 @@ TransactionId *ParallelCurrentXids;
+  */
+ int			MyXactFlags;
+ 
++/* Transaction do the write on local node */
++bool		XactWriteLocalNode = false;
++
+ /*
+  *	transaction states - transaction state from server perspective
+  */
+@@ -2150,6 +2153,8 @@ CommitTransaction(void)
+ 	XactTopTransactionId = InvalidTransactionId;
+ 	nParallelCurrentXids = 0;
+ 
++	ForgetTransactionLocalNode();
++
+ 	/*
+ 	 * done with commit processing, set current transaction state back to
+ 	 * default
+@@ -2427,6 +2432,8 @@ PrepareTransaction(void)
+ 	XactTopTransactionId = InvalidTransactionId;
+ 	nParallelCurrentXids = 0;
+ 
++	ForgetTransactionLocalNode();
++
+ 	/*
+ 	 * done with 1st phase commit processing, set current transaction state
+ 	 * back to default
+@@ -2611,6 +2618,8 @@ AbortTransaction(void)
+ 		pgstat_report_xact_timestamp(0);
+ 	}
+ 
++	ForgetTransactionLocalNode();
++
+ 	/*
+ 	 * State remains TRANS_ABORT until CleanupTransaction().
+ 	 */
+@@ -4441,6 +4450,24 @@ AbortOutOfAnyTransaction(void)
+ }
+ 
+ /*
++ * RegisterTransactionLocalNode --- remember to write on local node
++ */
++void
++RegisterTransactionLocalNode(void)
++{
++	XactWriteLocalNode = true;
++}
++
++/*
++ * ForgetTransactionLocalNode --- forget to write on local node
++ */
++void
++ForgetTransactionLocalNode(void)
++{
++	XactWriteLocalNode = false;
++}
++
++/*
+  * IsTransactionBlock --- are we within a transaction block?
+  */
+ bool
+diff --git a/src/include/access/xact.h b/src/include/access/xact.h
+index 118b0a8..fbce0d7 100644
+--- a/src/include/access/xact.h
++++ b/src/include/access/xact.h
+@@ -91,6 +91,7 @@ extern int	MyXactFlags;
+  */
+ #define XACT_FLAGS_ACQUIREDACCESSEXCLUSIVELOCK	(1U << 1)
+ 
++extern bool XactWriteLocalNode;
+ 
+ /*
+  *	start- and end-of-transaction callbacks for dynamically loaded modules
+@@ -377,6 +378,8 @@ extern void RegisterXactCallback(XactCallback callback, void *arg);
+ extern void UnregisterXactCallback(XactCallback callback, void *arg);
+ extern void RegisterSubXactCallback(SubXactCallback callback, void *arg);
+ extern void UnregisterSubXactCallback(SubXactCallback callback, void *arg);
++extern void RegisterTransactionLocalNode(void);
++extern void ForgetTransactionLocalNode(void);
+ 
+ extern int	xactGetCommittedChildren(TransactionId **ptr);
+ 
+-- 
+1.7.1
+

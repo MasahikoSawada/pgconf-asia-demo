@@ -1,0 +1,25 @@
+From 850d88cdfc99bb19e1d4cfc8f6401dc47b02ce7b Mon Sep 17 00:00:00 2001
+From: Masahiko Sawada <sawada.mshk@gmail.com>
+Date: Wed, 29 Nov 2017 10:22:15 +0900
+Subject: [PATCH 5/5] Quite compiler.
+
+---
+ src/backend/access/transam/fdwxact_resolver.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/src/backend/access/transam/fdwxact_resolver.c b/src/backend/access/transam/fdwxact_resolver.c
+index 6d3d08c..d2f0255 100644
+--- a/src/backend/access/transam/fdwxact_resolver.c
++++ b/src/backend/access/transam/fdwxact_resolver.c
+@@ -337,7 +337,7 @@ fdwxact_maybe_launch_resolver(void)
+ 	BackgroundWorker bgw;
+ 	BackgroundWorkerHandle *bgw_handle;
+ 	int i;
+-	int	slot;
++	int	slot = 0;
+ 	bool	found = false;
+ 
+ 	LWLockAcquire(FdwXactResolverLock, LW_EXCLUSIVE);
+-- 
+1.7.1
+
