@@ -1,3 +1,9 @@
 #!/bin/sh
 PGBIN=/home/masahiko/pgsql/demo/bin
-${PGBIN}/psql -e -d postgres -p 4440 -f $1
+
+num=0
+if [ "$1" != "" ];then
+    num=$1
+fi
+
+eval ${PGBIN}/psql -d postgres -p 444${num}
