@@ -1,1 +1,6 @@
 demo.lock
+*.so
+*.o
+objfiles.txt
+*.log
+
