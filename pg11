@@ -1,5 +1,5 @@
 #!/bin/sh
-PGBIN=/home/masahiko/pgsql/demo/bin
+PGBIN=/home/masahiko/pgsql/11.0/bin
 
 num=0
 if [ "$1" != "" ];then

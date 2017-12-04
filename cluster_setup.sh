@@ -30,8 +30,8 @@ done
 
 # Setting enviorment variables
 if [ "$VERSION" == "demo" ];then
-    PGBIN=/home/masahiko/pgsql/demo/bin
-    PGHOME=/home/masahiko/pgsql/demo
+    PGBIN=/home/masahiko/pgsql/11.0/bin
+    PGHOME=/home/masahiko/pgsql/11.0
     pri_port=4440
     port=4440
 elif [ "$VERSION" == "10" ];then
@@ -74,8 +74,9 @@ do
     ${PGBIN}/initdb -D ${pgdata} -E UTF8 --no-locale > /dev/null 2>&1
 
     cat <<EOF >> ${pgdata}/postgresql.conf
-log_line_prefix = '<${data}> [%p] '
+log_line_prefix = '<${data}> '
 max_prepared_transactions = 10
+log_min_messages = ERROR
 shared_preload_libraries = 'pg_simula'
 #log_statement = 'all'
 EOF
@@ -89,7 +90,7 @@ max_prepared_foreign_transactions = 10
 EOF
     fi
 
-    ${PGBIN}/pg_ctl start -D ${pgdata} -o "-p ${port}" -c
+    ${PGBIN}/pg_ctl start -D ${pgdata} -o "-p ${port}" -c -l ${VERSION}_${data}.log
 
     # Set up pg_simula on each servers
     ${PSQL} -p ${port} -c "create extension pg_simula" > /dev/null 2>&1
